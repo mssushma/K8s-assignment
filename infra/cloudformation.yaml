@@ -170,7 +170,17 @@ Resources:
       Tags:
         - Key: Name
           Value: kube-master
+          
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: flask-k8s-app
 
+      ImageTagMutability: MUTABLE
+
+      ImageScanningConfiguration:
+        ScanOnPush: false
+        
   ElasticIP:
     Type: AWS::EC2::EIP
 
@@ -201,3 +211,7 @@ Outputs:
   SSHCommand:
     Description: SSH Command
     Value: !Sub "ssh ubuntu@${ElasticIP}"
+
+  ECRRepositoryUri:
+    Description: ECR Repository URI
+    Value: !GetAtt ECRRepository.RepositoryUri

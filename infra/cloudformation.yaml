@@ -1,7 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
+
 Description: Kubernetes Assignment Infrastructure
 
 Parameters:
+
   LatestUbuntuAmi:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
@@ -11,9 +13,10 @@ Resources:
   K8SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Kubernetes Assignment SG
+      GroupDescription: Kubernetes Assignment Security Group
 
       SecurityGroupIngress:
+
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
@@ -30,25 +33,171 @@ Resources:
           CidrIp: 0.0.0.0/0
 
         - IpProtocol: tcp
+          FromPort: 6443
+          ToPort: 6443
+          CidrIp: 106.51.200.183/32
+
+        - IpProtocol: tcp
           FromPort: 30000
           ToPort: 32767
           CidrIp: 0.0.0.0/0
+
+  K8Role:
+    Type: AWS::IAM::Role
+
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+
+  K8InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+
+    Properties:
+      Roles:
+        - !Ref K8Role
 
   K8Master:
     Type: AWS::EC2::Instance
 
     Properties:
+
       InstanceType: t3.small
+
       ImageId: !Ref LatestUbuntuAmi
+
+      IamInstanceProfile: !Ref K8InstanceProfile
 
       SecurityGroupIds:
         - !Ref K8SecurityGroup
+
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 20
+            VolumeType: gp3
+            DeleteOnTermination: true
+
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -eux
+
+          apt-get update -y
+
+          swapoff -a
+          sed -i '/ swap / s/^/#/' /etc/fstab
+
+          cat <<EOF | tee /etc/modules-load.d/k8s.conf
+          overlay
+          br_netfilter
+          EOF
+
+          modprobe overlay
+          modprobe br_netfilter
+
+          cat <<EOF | tee /etc/sysctl.d/k8s.conf
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.bridge.bridge-nf-call-iptables = 1
+          net.ipv4.ip_forward = 1
+          EOF
+
+          sysctl --system
+
+          apt-get install -y \
+            apt-transport-https \
+            ca-certificates \
+            curl \
+            gpg
+
+          mkdir -p /etc/apt/keyrings
+
+          curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key \
+          | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+          echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /" \
+          > /etc/apt/sources.list.d/kubernetes.list
+
+          apt-get update -y
+
+          apt-get install -y \
+            docker.io \
+            containerd \
+            kubelet \
+            kubeadm \
+            kubectl
+
+          apt-mark hold kubelet kubeadm kubectl
+
+          systemctl enable docker
+          systemctl start docker
+
+          systemctl enable containerd
+          systemctl restart containerd
+
+          kubeadm init \
+            --pod-network-cidr=10.244.0.0/16
+
+          mkdir -p /root/.kube
+
+          cp /etc/kubernetes/admin.conf /root/.kube/config
+
+          export KUBECONFIG=/etc/kubernetes/admin.conf
+
+          kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
+
+          kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+
+          mkdir -p /home/ubuntu/.kube
+
+          cp /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
+
+          chown -R ubuntu:ubuntu /home/ubuntu/.kube
+
+          mkdir -p /home/ubuntu/k8s
+          chown -R ubuntu:ubuntu /home/ubuntu/k8s
 
       Tags:
         - Key: Name
           Value: kube-master
 
+  ElasticIP:
+    Type: AWS::EC2::EIP
+
+    Properties:
+      Domain: vpc
+
+  ElasticIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+
+    Properties:
+      AllocationId: !GetAtt ElasticIP.AllocationId
+      InstanceId: !Ref K8Master
+
 Outputs:
 
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref K8Master
+
   PublicIP:
-    Value: !GetAtt K8Master.PublicIp
+    Description: Public Elastic IP
+    Value: !Ref ElasticIP
+
+  KubernetesNode:
+    Description: Kubernetes Node Name
+    Value: kube-master
+
+  SSHCommand:
+    Description: SSH Command
+    Value: !Sub "ssh ubuntu@${ElasticIP}"

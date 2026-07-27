@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Kubernetes Assignment Infrastructure
+
+Parameters:
+  LatestUbuntuAmi:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+
+Resources:
+
+  K8SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Kubernetes Assignment SG
+
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 106.51.200.183/32
+
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+        - IpProtocol: tcp
+          FromPort: 30000
+          ToPort: 32767
+          CidrIp: 0.0.0.0/0
+
+  K8Master:
+    Type: AWS::EC2::Instance
+
+    Properties:
+      InstanceType: t3.small
+      ImageId: !Ref LatestUbuntuAmi
+
+      SecurityGroupIds:
+        - !Ref K8SecurityGroup
+
+      Tags:
+        - Key: Name
+          Value: kube-master
+
+Outputs:
+
+  PublicIP:
+    Value: !GetAtt K8Master.PublicIp

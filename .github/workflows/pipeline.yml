@@ -1,0 +1,97 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  STACK_NAME: kubernetes-assignment
+
+jobs:
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy CloudFormation Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file cloudformation/infrastructure.yaml \
+            --stack-name $STACK_NAME \
+            --capabilities CAPABILITY_NAMED_IAM
+
+      - name: Get Stack Outputs
+        run: |
+
+          ECR_URI=$(aws cloudformation describe-stacks \
+            --stack-name $STACK_NAME \
+            --query "Stacks[0].Outputs[?OutputKey=='ECRRepositoryUrl'].OutputValue" \
+            --output text)
+
+          EC2_IP=$(aws cloudformation describe-stacks \
+            --stack-name $STACK_NAME \
+            --query "Stacks[0].Outputs[?OutputKey=='PublicIP'].OutputValue" \
+            --output text)
+
+          echo "ECR_URI=$ECR_URI" >> $GITHUB_ENV
+          echo "EC2_IP=$EC2_IP" >> $GITHUB_ENV
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password \
+          | docker login \
+            --username AWS \
+            --password-stdin $ECR_URI
+
+      - name: Build Docker Image
+        run: |
+          docker build -t flask-k8s-app .
+
+      - name: Tag Docker Image
+        run: |
+          docker tag flask-k8s-app:latest \
+          $ECR_URI:${{ github.sha }}
+
+      - name: Push Docker Image
+        run: |
+          docker push $ECR_URI:${{ github.sha }}
+
+      - name: Create SSH Key
+        run: |
+          echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key
+          chmod 600 private_key
+
+      - name: Copy K8s Manifests
+        run: |
+          scp -o StrictHostKeyChecking=no \
+              -i private_key \
+              -r kubernetes \
+              ubuntu@$EC2_IP:/home/ubuntu/
+
+      - name: Deploy to Kubernetes
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+              -i private_key \
+              ubuntu@$EC2_IP << EOF
+
+          kubectl create namespace app --dry-run=client -o yaml | kubectl apply -f -
+
+          sed -i "s|IMAGE_PLACEHOLDER|$ECR_URI:${{ github.sha }}|g" /home/ubuntu/kubernetes/deployment.yaml
+
+          kubectl apply -f /home/ubuntu/kubernetes/
+
+          kubectl rollout status deployment/flask-app -n app --timeout=300s
+
+          EOF

@@ -20,7 +20,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: 106.51.200.183/32
+          CidrIp: 0.0.0.0/0
 
         - IpProtocol: tcp
           FromPort: 80
@@ -144,7 +144,16 @@ Resources:
 
           systemctl enable containerd
           systemctl restart containerd
+          
+          mkdir -p /etc/containerd
 
+          containerd config default > /etc/containerd/config.toml
+
+          sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' \
+          /etc/containerd/config.toml
+
+          systemctl restart containerd
+          
           kubeadm init \
             --pod-network-cidr=10.244.0.0/16
 
@@ -154,10 +163,23 @@ Resources:
 
           export KUBECONFIG=/etc/kubernetes/admin.conf
 
+          until kubectl get nodes >/dev/null 2>&1
+          do
+          echo "Waiting for Kubernetes API..."
+            sleep 15
+          done
+
           kubectl taint nodes --all node-role.kubernetes.io/control-plane- || true
 
           kubectl apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
 
+          echo "Waiting for networking..."
+          sleep 60
+
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+
+          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+          
           mkdir -p /home/ubuntu/.kube
 
           cp /etc/kubernetes/admin.conf /home/ubuntu/.kube/config

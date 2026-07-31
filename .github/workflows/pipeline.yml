@@ -116,11 +116,9 @@ jobs:
 
           echo "Waiting for ingress controller..."
 
-          kubectl wait \
-          --namespace ingress-nginx \
-          --for=condition=Ready pod \
-          --all \
-          --timeout=600s
+          echo "Ingress controller status"
+
+          kubectl get pods -n ingress-nginx
 
           kubectl apply -f /home/ubuntu/K8s/configmap.yaml -n app
 

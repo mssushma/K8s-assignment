@@ -71,6 +71,13 @@ jobs:
           echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key
           chmod 600 private_key
 
+      - name: Wait For Kubernetes Bootstrap
+        run: |
+          ssh -o StrictHostKeyChecking=no \
+          -i private_key \
+          ubuntu@$EC2_IP \
+          "sudo cloud-init status --wait"
+
       - name: Copy K8s Manifests
         run: |
           scp -o StrictHostKeyChecking=no \
@@ -86,9 +93,9 @@ jobs:
 
           kubectl create namespace app --dry-run=client -o yaml | kubectl apply -f -
 
-          sed -i "s|IMAGE_PLACEHOLDER|$ECR_URI:${{ github.sha }}|g" /home/ubuntu/kubernetes/deployment.yaml
+          sed -i "s|IMAGE_PLACEHOLDER|$ECR_URI:${{ github.sha }}|g" /home/ubuntu/K8s/deployment.yaml
 
-          kubectl apply -f /home/ubuntu/kubernetes/
+          kubectl apply -f /home/ubuntu/K8s/
 
           kubectl rollout status deployment/flask-app -n app --timeout=300s
 

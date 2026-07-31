@@ -84,7 +84,7 @@ jobs:
               -i private_key \
               -r K8s \
               ubuntu@$EC2_IP:/home/ubuntu/
-
+              
       - name: Deploy to Kubernetes
         run: |
           ssh \
@@ -92,10 +92,10 @@ jobs:
             -o ServerAliveInterval=30 \
             -o ServerAliveCountMax=20 \
             -i private_key \
-             ubuntu@$EC2_IP << EOF
+            ubuntu@$EC2_IP << EOF
 
-          set -x
-          
+          set -eux
+
           export KUBECONFIG=/home/ubuntu/.kube/config
 
           cloud-init status
@@ -105,21 +105,37 @@ jobs:
           ls -R /home/ubuntu/K8s
 
           kubectl get ns
-          
-          EOF
 
-          kubectl create namespace app --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create namespace app \
+          --dry-run=client \
+          -o yaml \
+          | kubectl apply -f -
 
-          sed -i "s|IMAGE_PLACEHOLDER|$ECR_URI:${{ github.sha }}|g" /home/ubuntu/K8s/deployment.yaml
+          sed -i "s|IMAGE_PLACEHOLDER|$ECR_URI:${{ github.sha }}|g" \
+          /home/ubuntu/K8s/deployment.yaml
+
+          echo "Waiting for ingress controller..."
 
           kubectl wait \
           --namespace ingress-nginx \
           --for=condition=Ready pod \
           --all \
-          --timeout=300s
+          --timeout=600s
 
-          kubectl apply -f /home/ubuntu/K8s/
+          kubectl apply -f /home/ubuntu/K8s/configmap.yaml -n app
 
-          kubectl rollout status deployment/assignment-app --timeout=300s
+          kubectl apply -f /home/ubuntu/K8s/deployment.yaml -n app
+
+          kubectl apply -f /home/ubuntu/K8s/service.yaml -n app
+
+          kubectl apply -f /home/ubuntu/K8s/hpa.yaml -n app
+
+          kubectl apply -f /home/ubuntu/K8s/ingress.yaml -n app
+
+          kubectl rollout status deployment/assignment-app \
+          -n app \
+          --timeout=600s
+
+          kubectl get all -n app
 
           EOF

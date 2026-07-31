@@ -37,7 +37,7 @@ jobs:
 
           ECR_URI=$(aws cloudformation describe-stacks \
             --stack-name $STACK_NAME \
-            --query "Stacks[0].Outputs[?OutputKey=='ECRRepositoryUrl'].OutputValue" \
+            --query "Stacks[0].Outputs[?OutputKey=='ECRRepositoryUri'].OutputValue" \
             --output text)
 
           EC2_IP=$(aws cloudformation describe-stacks \

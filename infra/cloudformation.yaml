@@ -8,6 +8,9 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
 
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+
 Resources:
 
   K8SecurityGroup:
@@ -74,6 +77,8 @@ Resources:
 
       InstanceType: t3.small
 
+      KeyName: !Ref KeyPairName
+      
       ImageId: !Ref LatestUbuntuAmi
 
       IamInstanceProfile: !Ref K8InstanceProfile

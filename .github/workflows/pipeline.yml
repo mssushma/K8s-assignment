@@ -95,6 +95,12 @@ jobs:
 
           sed -i "s|IMAGE_PLACEHOLDER|$ECR_URI:${{ github.sha }}|g" /home/ubuntu/K8s/deployment.yaml
 
+          kubectl wait \
+          --namespace ingress-nginx \
+          --for=condition=Ready pod \
+          --all \
+          --timeout=300s
+
           kubectl apply -f /home/ubuntu/K8s/
 
           kubectl rollout status deployment/assignment-app --timeout=300s

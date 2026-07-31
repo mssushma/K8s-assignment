@@ -8,14 +8,12 @@ spec:
   ingressClassName: nginx
 
   rules:
-  - http:
-      paths:
-      - path: /
-        pathType: Prefix
-
-        backend:
-          service:
-            name: assignment-service
-            port:
-              number: 80
-`
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: assignment-service
+                port:
+                  number: 80

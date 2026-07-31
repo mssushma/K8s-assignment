@@ -53,7 +53,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t flask-k8s-app .
+          docker build -t flask-k8s-app -f app/Dockerfile app .
 
       - name: Tag Docker Image
         run: |

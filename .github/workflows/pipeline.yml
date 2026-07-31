@@ -97,6 +97,6 @@ jobs:
 
           kubectl apply -f /home/ubuntu/K8s/
 
-          kubectl rollout status deployment/flask-app -n app --timeout=300s
+          kubectl rollout status deployment/assignment-app --timeout=300s
 
           EOF

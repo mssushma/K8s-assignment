@@ -32,7 +32,7 @@ jobs:
             --stack-name $STACK_NAME \
             --capabilities CAPABILITY_NAMED_IAM\
             --parameter-overrides \
-              KeyPairName=${{ secrets.EC2_PRIVATE_KEY }}
+              KeyPairName=k8s-assignment-key
 
       - name: Get Stack Outputs
         run: |

@@ -1,41 +1,31 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: assignment-app
-
-spec:
-  replicas: 2
-
-  selector:
-    matchLabels:
+template:
+  metadata:
+    labels:
       app: assignment-app
 
-  template:
-    metadata:
-      labels:
-        app: assignment-app
+  spec:
+    imagePullSecrets:
+      - name: ecr-secret
 
-    spec:
-      containers:
+    containers:
       - name: assignment-app
-
         image: IMAGE_PLACEHOLDER
 
         ports:
-        - containerPort: 8080
+          - containerPort: 8080
 
         env:
-        - name: APP_ENV
-          valueFrom:
-            configMapKeyRef:
-              name: app-config
-              key: APP_ENV
+          - name: APP_ENV
+            valueFrom:
+              configMapKeyRef:
+                name: app-config
+                key: APP_ENV
 
-        - name: PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: app-secret
-              key: password
+          - name: PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: app-secret
+                key: password
 
         resources:
           requests:

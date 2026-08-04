@@ -128,7 +128,7 @@ jobs:
 
           kubectl apply -f /home/ubuntu/K8s/hpa.yaml -n app
 
-          kubectl apply -f /home/ubuntu/K8s/ingress.yaml -n app
+          kubectl apply -f /home/ubuntu/K8s/ingress.yaml -n app || true
 
           kubectl rollout status deployment/assignment-app \
           -n app \

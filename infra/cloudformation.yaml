@@ -136,7 +136,7 @@ Resources:
           apt-get update -y
 
           apt-get install -y \
-            awscli \
+            # awscli \
             docker.io \
             containerd \
             kubelet \

@@ -195,6 +195,8 @@ Resources:
           mkdir -p /home/ubuntu/k8s
           chown -R ubuntu:ubuntu /home/ubuntu/k8s
 
+          touch /tmp/k8s-ready
+
       Tags:
         - Key: Name
           Value: kube-master

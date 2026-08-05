@@ -17,6 +17,9 @@ spec:
         app: assignment-app
 
     spec:
+      imagePullSecrets:
+        - name: ecr-secret
+        
       containers:
         - name: assignment-app
           image: IMAGE_PLACEHOLDER

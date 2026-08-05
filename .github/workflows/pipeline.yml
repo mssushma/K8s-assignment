@@ -71,24 +71,12 @@ jobs:
           echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key
           chmod 600 private_key
           
-      - name: Wait For Kubernetes Bootstrap
-        run: |
-          ssh -o StrictHostKeyChecking=no \
-          -i private_key \
-          ubuntu@$EC2_IP '
-          while [ ! -f /tmp/k8s-ready ]
-          do
-            echo "Waiting..."
-            sleep 15
-          done
-          '
-          
-      # - name: Wait For Kubernetes Bootstrap
-        # run: |
-         # ssh -o StrictHostKeyChecking=no \
-          #-i private_key \
-         # ubuntu@$EC2_IP \
-          # "sudo cloud-init status --wait"
+       - name: Wait For Kubernetes Bootstrap
+         run: |
+           ssh -o StrictHostKeyChecking=no \
+           -i private_key \
+           ubuntu@$EC2_IP \
+           "sudo cloud-init status --wait"
 
       - name: Copy K8s Manifests
         run: |

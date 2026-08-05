@@ -71,19 +71,10 @@ jobs:
           echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key
           chmod 600 private_key
           
-      - name: Wait For Kubernetes API
+      - name: Wait For Kubernetes Bootstrap
         run: |
-          ssh -o StrictHostKeyChecking=no \
-          -i private_key \
-          ubuntu@$EC2_IP '
-          timeout 1200 bash -c "
-          until [ -f /home/ubuntu/.kube/config ]
-          do
-            echo Waiting...
-            sleep 15
-          done
-          "
-          '
+          sleep 300   
+          
       # - name: Wait For Kubernetes Bootstrap
         # run: |
          # ssh -o StrictHostKeyChecking=no \

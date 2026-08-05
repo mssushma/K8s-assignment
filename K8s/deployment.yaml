@@ -1,44 +1,57 @@
-template:
-  metadata:
-    labels:
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: assignment-app
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
       app: assignment-app
 
-  spec:
-    containers:
-      - name: assignment-app
-        image: IMAGE_PLACEHOLDER
+  template:
+    metadata:
+      labels:
+        app: assignment-app
 
-        ports:
-          - containerPort: 8080
+    spec:
+      containers:
+        - name: assignment-app
+          image: IMAGE_PLACEHOLDER
 
-        env:
-          - name: APP_ENV
-            valueFrom:
-              configMapKeyRef:
-                name: app-config
-                key: APP_ENV
+          ports:
+            - containerPort: 8080
 
-          - name: PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: app-secret
-                key: password
+          env:
+            - name: APP_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: APP_ENV
 
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: password
 
-          limits:
-            cpu: 500m
-            memory: 512Mi
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
 
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
+            limits:
+              cpu: 500m
+              memory: 512Mi
 
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8080
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080

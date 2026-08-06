@@ -271,25 +271,39 @@ Resources:
       AlarmActions:
         - !Ref AlertTopic
 
-  LambdaRole:
+    LambdaRole:
     Type: AWS::IAM::Role
 
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
 
-        Statement:
-          - Effect: Allow
+          Statement:
+            - Effect: Allow
 
-            Principal:
-              Service:
-                - lambda.amazonaws.com
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
 
-            Action:
-              - sts:AssumeRole
+              Action:
+                - sts:AssumeRole
 
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+        Policies:
+          - PolicyName: DynamoDBAccess
+
+            PolicyDocument:
+              Version: '2012-10-17'
+
+              Statement:
+                - Effect: Allow
+
+                  Action:
+                    - dynamodb:PutItem
+
+                  Resource: !GetAtt AlarmEventsTable.Arn
 
   AlertLambda:
     Type: AWS::Lambda::Function
@@ -308,16 +322,46 @@ Resources:
       Code:
         ZipFile: |
           import json
+          import boto3
+          import uuid
+          from datetime import datetime
+
+          dynamodb = boto3.resource("dynamodb")
+
+          table = dynamodb.Table("kubernetes-alarm-events")
 
           def lambda_handler(event, context):
-              print("Kubernetes Alert Received")
-              print(json.dumps(event))
+
+              table.put_item(
+                  Item={
+                      "EventId": str(uuid.uuid4()),
+                      "Timestamp": datetime.utcnow().isoformat(),
+                      "Payload": json.dumps(event)
+                  }
+              )
+
+              print("Alarm event written to DynamoDB")
 
               return {
-                  "statusCode": 200,
-                  "body": "Alert Processed"
+                  "statusCode": 200
               }
+              
+  AlarmEventsTable:
+    Type: AWS::DynamoDB::Table
 
+    Properties:
+      TableName: kubernetes-alarm-events
+
+      BillingMode: PAY_PER_REQUEST
+
+      AttributeDefinitions:
+        - AttributeName: EventId
+          AttributeType: S
+
+      KeySchema:
+        - AttributeName: EventId
+          KeyType: HASH
+          
   LambdaSubscription:
     Type: AWS::SNS::Subscription
 
@@ -380,3 +424,7 @@ Outputs:
   LambdaFunction:
     Description: Lambda Function Name
     Value: !Ref AlertLambda
+
+  DynamoDBTable:
+    Description: DynamoDB Table Name
+    Value: !Ref AlarmEventsTable

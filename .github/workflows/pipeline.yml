@@ -114,6 +114,11 @@ jobs:
           -o yaml \
           | kubectl apply -f -
 
+          kubectl create secret generic app-secret \
+          --from-literal=password="${{ secrets.APP_PASSWORD }}" \
+          -n app \  
+          --dry-run=client -o yaml | kubectl apply -f -
+
           kubectl create secret docker-registry ecr-secret \
           --docker-server=$ECR_URI \
           --docker-username=AWS \
@@ -158,10 +163,16 @@ jobs:
           kubectl get deployment assignment-app -n app -o yaml | grep -A5 imagePullSecrets || true
           echo "================ POD DETAILS ================"
           kubectl describe pods -n app || true
+          echo "Waiting 60 seconds before checking rollout..."
+          sleep 60
+
+          kubectl get pods -n app -o wide
+
+          kubectl describe pods -n app
           
           kubectl rollout status deployment/assignment-app \
           -n app \
-          --timeout=600s
+          --timeout=300s
 
           kubectl get all -n app
 

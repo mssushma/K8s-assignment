@@ -209,7 +209,135 @@ Resources:
 
       ImageScanningConfiguration:
         ScanOnPush: false
-        
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: kubernetes-alerts
+
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: sushms1014@gmail.com
+
+  HighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: KubernetesHighCPU
+
+      Namespace: AWS/EC2
+      MetricName: CPUUtilization
+
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref K8Master
+
+      Statistic: Average
+      Period: 300
+
+      EvaluationPeriods: 1
+
+      Threshold: 70
+
+      ComparisonOperator: GreaterThanThreshold
+
+      AlarmActions:
+        - !Ref AlertTopic
+
+  EC2StatusCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: KubernetesStatusCheckFailed
+
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed
+
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref K8Master
+
+      Statistic: Maximum
+
+      Period: 60
+
+      EvaluationPeriods: 1
+
+      Threshold: 1
+
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+
+      AlarmActions:
+        - !Ref AlertTopic
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+
+        Statement:
+          - Effect: Allow
+
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+
+            Action:
+              - sts:AssumeRole
+
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  AlertLambda:
+    Type: AWS::Lambda::Function
+
+    Properties:
+      FunctionName: KubernetesAlertHandler
+
+      Runtime: python3.12
+
+      Handler: index.lambda_handler
+
+      Role: !GetAtt LambdaRole.Arn
+
+      Timeout: 30
+
+      Code:
+        ZipFile: |
+          import json
+
+          def lambda_handler(event, context):
+              print("Kubernetes Alert Received")
+              print(json.dumps(event))
+
+              return {
+                  "statusCode": 200,
+                  "body": "Alert Processed"
+              }
+
+  LambdaSubscription:
+    Type: AWS::SNS::Subscription
+
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: lambda
+      Endpoint: !GetAtt AlertLambda.Arn
+
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+
+    Properties:
+      FunctionName: !Ref AlertLambda
+
+      Action: lambda:InvokeFunction
+
+      Principal: sns.amazonaws.com
+
+      SourceArn: !Ref AlertTopic
+     
   ElasticIP:
     Type: AWS::EC2::EIP
 
@@ -244,3 +372,11 @@ Outputs:
   ECRRepositoryUri:
     Description: ECR Repository URI
     Value: !GetAtt ECRRepository.RepositoryUri
+
+  SNSTopicArn:
+    Description: SNS Topic ARN
+    Value: !Ref AlertTopic
+
+  LambdaFunction:
+    Description: Lambda Function Name
+    Value: !Ref AlertLambda

@@ -148,6 +148,17 @@ jobs:
 
           kubectl apply -f /home/ubuntu/K8s/ingress.yaml -n app || true
 
+          echo "================ PODS ================"
+          kubectl get pods -n app
+          echo "================ SECRETS ================"
+          kubectl get secret -n app
+          echo "================ DEPLOYMENT ================"
+          kubectl describe deployment assignment-app -n app
+          echo "================ IMAGE PULL SECRETS ================"
+          kubectl get deployment assignment-app -n app -o yaml | grep -A5 imagePullSecrets || true
+          echo "================ POD DETAILS ================"
+          kubectl describe pods -n app || true
+          
           kubectl rollout status deployment/assignment-app \
           -n app \
           --timeout=600s

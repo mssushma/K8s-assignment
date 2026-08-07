@@ -172,6 +172,10 @@ jobs:
           -n app \
           --timeout=300s
 
+          kubectl get all -n app
+
+          EOF
+
           - name: Install Prometheus and Grafana
             run: |
               ssh \
@@ -233,7 +237,3 @@ jobs:
               curl http://localhost:9090/-/ready
 
               EOF
-
-          kubectl get all -n app
-
-          EOF

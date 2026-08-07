@@ -116,7 +116,6 @@ jobs:
 
           kubectl create secret generic app-secret --from-literal=password="${{ secrets.APP_PASSWORD }}" -n app --dry-run=client -o yaml | kubectl apply -f -
 
-
           kubectl create secret docker-registry ecr-secret \
           --docker-server=$ECR_URI \
           --docker-username=AWS \
@@ -219,7 +218,7 @@ jobs:
 
               sleep 30
 
-              kubectl wait --for=condition=Ready pod --all -n monitoring --timeout=200s || true
+              kubectl wait --for=condition=Ready pod --all -n monitoring --timeout=300s || true
 
               kubectl get pods -n monitoring
 

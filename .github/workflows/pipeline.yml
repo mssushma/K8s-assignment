@@ -172,6 +172,68 @@ jobs:
           -n app \
           --timeout=300s
 
+          - name: Install Prometheus and Grafana
+            run: |
+              ssh \
+                -o StrictHostKeyChecking=no \
+                -i private_key \
+                ubuntu@$EC2_IP << 'EOF'
+
+              export KUBECONFIG=/home/ubuntu/.kube/config
+
+              if ! command -v helm >/dev/null 2>&1
+              then
+                curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+              fi
+
+              helm repo add prometheus-community \
+                https://prometheus-community.github.io/helm-charts
+
+              helm repo update
+
+              kubectl create namespace monitoring \
+              --dry-run=client -o yaml | kubectl apply -f -
+
+              helm upgrade --install monitoring \
+              prometheus-community/kube-prometheus-stack \
+              -n monitoring
+
+              EOF
+
+          - name: Verify Monitoring Stack
+            run: |
+              ssh \
+                -o StrictHostKeyChecking=no \
+                -i private_key \
+                ubuntu@$EC2_IP << 'EOF'
+
+              export KUBECONFIG=/home/ubuntu/.kube/config
+
+              echo "===== Monitoring Pods ====="
+
+              kubectl get pods -n monitoring
+
+              echo "===== Waiting ====="
+
+              sleep 30
+
+              kubectl get pods -n monitoring
+
+              echo "===== Prometheus Check ====="
+
+              kubectl port-forward \
+                -n monitoring \
+                prometheus-monitoring-kube-prometheus-prometheus-0 \
+                9090:9090 >/tmp/prometheus.log 2>&1 &
+
+              sleep 15
+
+              curl http://localhost:9090/-/healthy
+
+              curl http://localhost:9090/-/ready
+
+              EOF
+
           kubectl get all -n app
 
           EOF

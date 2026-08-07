@@ -143,8 +143,6 @@ jobs:
 
           kubectl apply -f /home/ubuntu/K8s/deployment.yaml -n app
 
-          kubectl apply -f /home/ubuntu/K8s/deployment.yaml -n app
-
           kubectl apply -f /home/ubuntu/K8s/service.yaml -n app
 
           kubectl apply -f /home/ubuntu/K8s/hpa.yaml -n app
@@ -176,8 +174,8 @@ jobs:
 
           EOF
 
-          - name: Install Prometheus and Grafana
-            run: |
+      - name: Install Prometheus and Grafana
+        run: |
               ssh \
                 -o StrictHostKeyChecking=no \
                 -i private_key \
@@ -204,8 +202,8 @@ jobs:
 
               EOF
 
-          - name: Verify Monitoring Stack
-            run: |
+      - name: Verify Monitoring Stack
+        run: |
               ssh \
                 -o StrictHostKeyChecking=no \
                 -i private_key \
